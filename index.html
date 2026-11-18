@@ -37,6 +37,9 @@
   .flt{margin-top:14px;display:flex;gap:6px;justify-content:center;align-items:center;pointer-events:auto;flex-wrap:wrap}
   .flt button{font-size:12px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:#fbfaf7;color:var(--ink2);transition:all .2s}
   .flt button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  #toast{position:fixed;left:50%;bottom:110px;transform:translate(-50%,20px);background:var(--ink);color:#fff;font-size:13px;padding:11px 18px;border-radius:999px;opacity:0;transition:all .3s;z-index:40;pointer-events:none;white-space:nowrap}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  .lab{max-width:8em;overflow:hidden;text-overflow:ellipsis}
   .flt .fn{font-size:11px;color:var(--muted);margin-left:4px}
 
   .nav{position:absolute;right:52px;top:52px;display:flex;gap:26px;font-size:13px;z-index:5}
@@ -190,7 +193,7 @@
     <div class="showtg"><span class="seg"><button type="button" data-show="shop">가게</button><button type="button" data-show="menu">메뉴</button></span></div>
     <h1 id="title"></h1>
     <div class="handle" id="handle">@signature.tower</div>
-    <div class="flt"><button type="button" data-f="near">🚶 걸어서 5분 이내</button><button type="button" data-f="fresh">↺ 최근 3번 빼기</button><span class="fn" id="fltNote"></span></div>
+    <div class="flt"><button type="button" id="locBtn" hidden>📍 내 근처로</button><button type="button" data-f="near">🚶 걸어서 5분 이내</button><button type="button" data-f="fresh">↺ 최근 3번 빼기</button><span class="fn" id="fltNote"></span></div>
   </div>
 
   <nav class="nav">
@@ -286,19 +289,70 @@ if(!S.filters) S.filters = {near:false, fresh:false};
 // what actually goes on the plate after the filters
 const PLACE = {"소반": ["ChIJD5WAHumjfDURovoFiNn01NY", 37.56489, 126.98935], "능동미나리": ["ChIJF-FNXQCjfDURCfdxq3sy1Xc", 37.56612, 126.99123], "용대리해장국": ["ChIJ2S2zL-SifDURIZMOpUZj5E0", 37.56638, 126.98953], "사랑방칼국수": ["ChIJZRMwxPmjfDURjPe6XKxQRPM", 37.56328, 126.99137], "을지로왕순대": ["ChIJ3yi2oMujfDURVB9UbdqaVRk", 37.5635, 126.99201], "전통맛집": ["ChIJkdZpksSjfDURFAaFcP4zKbE", 37.56754, 126.99745], "가야성": ["ChIJ2WEZz-WifDURw-XBhBk49vY", 37.5665, 126.98844], "창화루": ["ChIJcRctg-CjfDURm-WzfAsCsJc", 37.56763, 126.99103], "남강": ["ChIJ75FRjgOjfDURXS2WHpXQJcc", 37.5645, 126.98889], "지유켄": ["ChIJJ_QOsVGjfDURxHpX1rE66rY", 37.56521, 126.99019], "바오차이": ["ChIJ5XIstOWifDUR_Ik7R5LvWFA", 37.56584, 126.98871], "멘츠루": ["ChIJy_baGoCjfDURak8WOXnvNkY", 37.56343, 126.99165], "콘부": ["ChIJq8Pta5KjfDUR885FLv7BOBo", 37.56506, 126.99033], "명인돈까스": ["ChIJ6_kdE-SifDUR-sPE34ImwQ4", 37.56531, 126.99087], "바스버거": ["ChIJT0zQQj-jfDURfLb9NyMb4kA", 37.56563, 126.99123], "세븐패티버거": ["ChIJb8t377KjfDUR0fLNkuglKyY", 37.56669, 126.99746], "지금여기가맨앞": ["ChIJby3Hf_GjfDUR3c_vrwYtIUM", 37.56564, 126.99523], "사이드바이사이드": ["ChIJu0vydOSjfDUR8Z64hrkKb0Y", 37.56644, 126.98958], "포비": ["ChIJ8R4tdFajfDURhYvbQYwnlzY", 37.56775, 126.98838], "코르코바도": ["ChIJheJdguqjfDURAD2lHgcDNB0", 37.56895, 126.99001], "DPRT커피": ["ChIJWbfrDiyjfDURutDsXm70LLw", 37.5686, 126.98936], "아마추어작업실": ["ChIJm7hDt92ifDUR0YI7AaQYLvo", 37.56873, 126.98835], "공간갑": ["ChIJkX-LP-SifDURI_K2UceFn8w", 37.56545, 126.99028], "크래킹커피": ["ChIJSfacfgCjfDURgu-Qk2aVoVM", 37.5647, 126.99119], "을지빈": ["ChIJA_j28OOifDURDFo4Ae-Wf6Q", 37.56517, 126.99218], "베로나": ["ChIJJWAL-eijfDURcXudQzrfzCc", 37.56547, 126.99149], "맥컬리커피": ["ChIJ01cNklGjfDUR_eyAQQVRV_0", 37.56519, 126.9923], "번트서울": ["ChIJPz5188SjfDURkViUpa5T1Ac", 37.56881, 126.99491]};  // 구글 place id, 위도, 경도
 const MENU = {"소반": "한정식", "능동미나리": "곰탕", "용대리해장국": "해장국", "사랑방칼국수": "칼국수", "을지로왕순대": "순댓국", "전통맛집": "국밥", "가야성": "짬뽕", "창화루": "마라탕", "남강": "탕수육", "지유켄": "볶음밥", "바오차이": "딤섬", "멘츠루": "라멘", "콘부": "라멘", "명인돈까스": "돈까스", "바스버거": "버거", "세븐패티버거": "버거", "지금여기가맨앞": "리조또", "사이드바이사이드": "커피", "포비": "베이글", "코르코바도": "라떼", "DPRT커피": "핸드드립", "아마추어작업실": "케이크", "공간갑": "빙수", "크래킹커피": "토스트", "을지빈": "케이크", "베로나": "빙수", "맥컬리커피": "라떼", "커피한약방": "핸드드립", "번트서울": "빵"};  // 가게별 대표 메뉴
-const menuOf = x => ((cur().menus||{})[x]) || MENU[x] || "";
+/* ---------- 내 근처 (카카오 장소 검색) ---------- */
+const KAKAO_KEY = "";   // ← 카카오 JavaScript 키를 여기에 넣으면 "📍 내 근처로" 버튼이 켜져요
+let NEAR = null;        // {lat, lng, lunch:{items, info}, cafe:{items, info}}
+const nearInfo = x => NEAR && NEAR[S.mode] && NEAR[S.mode].info[x];
+const walkOf = x => nearInfo(x) ? nearInfo(x).walk : WALK[x];
+function toast(msg){
+  let t = $("toast"); if(!t){ t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), 3200);
+}
+function loadKakao(){
+  return new Promise((ok, no)=>{
+    if(window.kakao && kakao.maps && kakao.maps.services) return ok();
+    const sc = document.createElement("script");
+    sc.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_KEY}&libraries=services&autoload=false`;
+    sc.onload = ()=> kakao.maps.load(ok); sc.onerror = ()=> no(new Error("sdk")); document.head.appendChild(sc);
+  });
+}
+function searchCat(code, lat, lng){
+  return new Promise(ok=>{
+    const ps = new kakao.maps.services.Places();
+    ps.categorySearch(code, (data, status)=>{
+      if(status !== kakao.maps.services.Status.OK) return ok({items:[], info:{}});
+      const info = {}, items = [];
+      data.slice(0, 15).forEach(d=>{
+        const seg = (d.category_name || "").split(">").map(x=>x.trim());
+        const menu = ((seg[2] || seg[1] || "").split(",")[0]).trim();
+        if(info[d.place_name]) return;
+        items.push(d.place_name);
+        info[d.place_name] = {menu, walk: Math.max(1, Math.round(Number(d.distance||0)*1.3/75)), lat:+d.y, lng:+d.x, url:d.place_url};
+      });
+      ok({items, info});
+    }, {location: new kakao.maps.LatLng(lat, lng), radius: 700, sort: kakao.maps.services.SortBy.DISTANCE});
+  });
+}
+async function goNear(){
+  if(NEAR){ NEAR = null; winner = -1; buildLabels(); toast("을지로 목록으로 돌아왔어요"); return; }
+  if(!navigator.geolocation){ toast("이 브라우저에서는 위치를 쓸 수 없어요"); return; }
+  $("locBtn").textContent = "📍 찾는 중…";
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    try{
+      await loadKakao();
+      const {latitude:lat, longitude:lng} = pos.coords;
+      const [lunch, cafe] = await Promise.all([searchCat("FD6", lat, lng), searchCat("CE7", lat, lng)]);
+      if(lunch.items.length < 2 && cafe.items.length < 2){ toast("근처에서 가게를 찾지 못했어요"); }
+      else { NEAR = {lat, lng, lunch, cafe}; toast(`근처 음식점 ${lunch.items.length}곳 · 카페 ${cafe.items.length}곳을 찾았어요`); }
+    }catch(e){ toast("가게 정보를 불러오지 못했어요. 잠시 후 다시 해보세요"); }
+    winner = -1; buildLabels();
+  }, ()=>{ toast("위치 권한을 허용해야 근처 가게를 찾을 수 있어요"); renderFilters(); }, {enableHighAccuracy:false, timeout:10000, maximumAge:300000});
+}
+const menuOf = x => (nearInfo(x) && nearInfo(x).menu) || ((cur().menus||{})[x]) || MENU[x] || "";
 const shown = x => S.show==='menu' && menuOf(x) ? menuOf(x) : x;
 if(!S.show) S.show = 'shop';
 function view(){
-  const c = cur(); let v = c.items;
-  if(S.filters.near) v = v.filter(x => !(x in WALK) || WALK[x] <= 5);
-  return v.length >= 2 ? v : c.items;
+  const c = cur(), base = (NEAR && NEAR[S.mode].items.length >= 2) ? NEAR[S.mode].items : c.items; let v = base;
+  if(S.filters.near) v = v.filter(x => walkOf(x) === undefined || walkOf(x) <= 5);
+  return v.length >= 2 ? v : base;
 }
 function renderFilters(){
+  const lb = $("locBtn"); if(lb){ lb.hidden = !KAKAO_KEY; lb.classList.toggle("on", !!NEAR); lb.textContent = NEAR ? "📍 내 근처 · 끄기" : "📍 내 근처로"; }
+  $("handle").textContent = NEAR ? "📍 내 위치 주변 700m" : MODES[S.mode].handle;
   document.querySelectorAll("[data-show]").forEach(b=>b.classList.toggle("on", S.show===b.dataset.show));
   document.querySelectorAll("[data-show]").forEach(b=> b.onclick = ()=>{ if(spinning) return; S.show = b.dataset.show; const w = winner; buildLabels(); setWinner(w); save(); });
 document.querySelectorAll(".flt [data-f]").forEach(b=>b.classList.toggle("on", !!S.filters[b.dataset.f]));
-  const all = cur().items.length, n = view().length;
+  const all = (NEAR ? NEAR[S.mode].items : cur().items).length, n = view().length;
   $("fltNote").textContent = n < all ? `접시 위 ${n}곳` : "";
 }
 
@@ -318,7 +372,7 @@ let ang = [], rad = [];
 function computeRings(){
   const n = labs.length, D = $("table").clientWidth;
   ang = new Array(n); rad = new Array(n);
-  if(n <= 8){ for(let i=0;i<n;i++){ ang[i] = i*TAU/n; rad[i] = D*0.21; } return; }
+  if(n <= 8){ for(let i=0;i<n;i++){ ang[i] = i*TAU/n; rad[i] = D*0.235; } return; }
   // outer ring ~2/3 of items, inner ring the rest, all inside the plate's well
   const ni = Math.round(n*0.36), pick = new Set();
   for(let j=0;j<ni;j++) pick.add(Math.min(n-1, Math.floor((j+0.5)*n/ni)));
@@ -421,14 +475,16 @@ function showPop(v){
   $("pv").textContent = v; burst();
   const other = S.show==='menu' ? v : menuOf(v);
   $("pv").textContent = shown(v);
-  $("pmeta").textContent = [other, (v in WALK) ? `걸어서 약 ${WALK[v]}분` : ""].filter(Boolean).join("  ·  ");
+  $("pmeta").textContent = [other, walkOf(v) !== undefined ? `걸어서 약 ${walkOf(v)}분` : ""].filter(Boolean).join("  ·  ");
   // search the name alone, with the map centred on the shop (or the tower for shops added by hand)
-  const pl = PLACE[v], lat = pl ? pl[1] : 37.5678, lng = pl ? pl[2] : 126.9899;
+  const ni = nearInfo(v), pl = ni ? null : PLACE[v];
+  const lat = ni ? ni.lat : pl ? pl[1] : NEAR ? NEAR.lat : 37.5678, lng = ni ? ni.lng : pl ? pl[2] : NEAR ? NEAR.lng : 126.9899;
   $("pmap").href = `https://map.naver.com/p/search/${encodeURIComponent(v)}?c=${lng},${lat},17,0,0,0,dh`;
-  const generic = !pl && !menuOf(v);
+  const generic = !pl && !ni && !menuOf(v);
   $("pmap").textContent = generic ? `근처 ${v} 가게 찾기` : "네이버지도";
   $("gmap").style.display = generic ? "none" : ""; $("gmap").previousElementSibling.style.display = generic ? "none" : "";
-  $("gmap").href = pl ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v)}&query_place_id=${pl[0]}`
+  $("gmap").textContent = ni ? "카카오맵" : "구글지도";
+  if(ni){ $("gmap").href = ni.url; } else $("gmap").href = pl ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v)}&query_place_id=${pl[0]}`
                       : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v)}%20${lat},${lng}`;
   const h = cur().history.slice(1,4);
   $("ph").textContent = h.length ? "최근  " + h.map(shown).join(" · ") : "";
@@ -544,6 +600,7 @@ $("closeEdit").onclick = $("scrim").onclick = ()=> $("app").classList.remove("op
 
 /* ---------- init ---------- */
 $("spin").onclick = spin;
+$("locBtn").onclick = goNear;
 document.querySelectorAll(".flt [data-f]").forEach(b=> b.onclick = ()=>{ if(spinning) return; S.filters[b.dataset.f] = !S.filters[b.dataset.f]; winner=-1; buildLabels(); save(); });
 $("ok").onclick = ()=>{ if(lastPick){ logPick(lastPick); lastPick = null; } hidePop(); };
 $("openLog").onclick = openLog; $("logClose").onclick = closeLog;
